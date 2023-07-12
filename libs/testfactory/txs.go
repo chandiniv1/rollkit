@@ -1,6 +1,7 @@
 package testfactory
 
 import (
+	"fmt"
 	mrand "math/rand"
 
 	"github.com/tendermint/tendermint/types"
@@ -24,6 +25,7 @@ func GenerateRandomTxs(count, size int) types.Txs {
 		tx := make([]byte, size)
 		_, err := mrand.Read(tx) //nolint:gosec
 		if err != nil {
+			fmt.Println("Helkkkkkkkk")
 			panic(err)
 		}
 		txs[i] = tx

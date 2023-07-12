@@ -2,6 +2,7 @@ package registry
 
 import (
 	"fmt"
+	"github.com/rollkit/rollkit/da/avail"
 
 	"github.com/rollkit/rollkit/da"
 	"github.com/rollkit/rollkit/da/celestia"
@@ -23,6 +24,7 @@ var clients = map[string]func() da.DataAvailabilityLayerClient{
 	"mock":     func() da.DataAvailabilityLayerClient { return &mock.DataAvailabilityLayerClient{} },
 	"grpc":     func() da.DataAvailabilityLayerClient { return &grpc.DataAvailabilityLayerClient{} },
 	"celestia": func() da.DataAvailabilityLayerClient { return &celestia.DataAvailabilityLayerClient{} },
+	"avail":    func() da.DataAvailabilityLayerClient { return &avail.DataAvailabilityLayerClient{} },
 }
 
 // GetClient returns client identified by name.
