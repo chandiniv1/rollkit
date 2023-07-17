@@ -62,6 +62,7 @@ func (c *DataAvailabilityLayerClient) Init(namespaceID types.NamespaceID, config
 
 // Start prepares DataAvailabilityLayerClient to work.
 func (c *DataAvailabilityLayerClient) Start() error {
+	c.logger.Info("started the application", "namespaceID", c.namespace.ID)
 	c.logger.Info("starting Celestia Data Availability Layer Client", "baseURL", c.config.BaseURL)
 	var err error
 	c.rpc, err = openrpc.NewClient(context.Background(), c.config.BaseURL, c.config.AuthToken)
