@@ -29,8 +29,12 @@ type DataAvailabilityLayerClient struct {
 // Config contains configuration options for DataAvailabilityLayerClient.
 type Config struct {
 	// TODO(tzdybal): add more options!
-	Host string `json:"host"`
-	Port int    `json:"port"`
+	Host        string            `json:"host"`
+	Port        int               `json:"port"`
+	NamespaceID types.NamespaceID `json:"namespace_id"`
+	config      []byte            `json:"config"`
+	Datastore   ds.Datastore      `json:"data_store"`
+	logger      log.Logger        `json:"logger"`
 }
 
 // DefaultConfig defines default values for DataAvailabilityLayerClient configuration.
