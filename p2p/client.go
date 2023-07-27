@@ -32,16 +32,16 @@ import (
 )
 
 // TODO(tzdybal): refactor to configuration parameters
-const (
-	// reAdvertisePeriod defines a period after which P2P client re-attempt advertising namespace in DHT.
-	reAdvertisePeriod = 1 * time.Hour
+// const (
+// 	// reAdvertisePeriod defines a period after which P2P client re-attempt advertising namespace in DHT.
+// 	reAdvertisePeriod = 1 * time.Hour
 
-	// peerLimit defines limit of number of peers returned during active peer discovery.
-	peerLimit = 60
+// 	// peerLimit defines limit of number of peers returned during active peer discovery.
+// 	peerLimit = 60
 
-	// txTopicSuffix is added after namespace to create pubsub topic for TX gossiping.
-	txTopicSuffix = "-tx"
-)
+// 	// txTopicSuffix is added after namespace to create pubsub topic for TX gossiping.
+// 	txTopicSuffix = "-tx"
+// )
 
 // Client is a P2P client, implemented with libp2p.
 //
