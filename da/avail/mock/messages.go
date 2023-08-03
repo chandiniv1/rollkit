@@ -8,15 +8,15 @@ import (
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
 )
 
-func SubmitData(size int, apiURL string, seed string, AppID int, data []byte) (types.Hash, error) {
+func SubmitData(size int, apiURL string, seed string, AppID int, data []byte) error {
 	api, err := gsrpc.NewSubstrateAPI(apiURL)
 	if err != nil {
-		return types.Hash{}, err
+		return err
 	}
 
 	meta, err := api.RPC.State.GetMetadataLatest()
 	if err != nil {
-		return types.Hash{}, err
+		return err
 	}
 
 	var appID int
@@ -28,7 +28,7 @@ func SubmitData(size int, apiURL string, seed string, AppID int, data []byte) (t
 
 	c, err := types.NewCall(meta, "DataAvailability.submit_data", data)
 	if err != nil {
-		return types.Hash{}, err
+		return err
 	}
 
 	//Create the extrinsic
@@ -36,28 +36,28 @@ func SubmitData(size int, apiURL string, seed string, AppID int, data []byte) (t
 
 	genesisHash, err := api.RPC.Chain.GetBlockHash(0)
 	if err != nil {
-		return types.Hash{}, err
+		return err
 	}
 
 	rv, err := api.RPC.State.GetRuntimeVersionLatest()
 	if err != nil {
-		return types.Hash{}, err
+		return err
 	}
 
 	keyringPair, err := signature.KeyringPairFromSecret(seed, 42)
 	if err != nil {
-		return types.Hash{}, err
+		return err
 	}
 
 	key, err := types.CreateStorageKey(meta, "System", "Account", keyringPair.PublicKey)
 	if err != nil {
-		return types.Hash{}, err
+		return err
 	}
 
 	var accountInfo types.AccountInfo
 	ok, err := api.RPC.State.GetStorageLatest(key, &accountInfo)
 	if err != nil || !ok {
-		return types.Hash{}, err
+		return err
 	}
 
 	nonce := uint32(accountInfo.Nonce)
@@ -75,16 +75,16 @@ func SubmitData(size int, apiURL string, seed string, AppID int, data []byte) (t
 	// Sign the transaction using Alice's default account
 	err = ext.Sign(keyringPair, o)
 	if err != nil {
-		return types.Hash{}, err
+		return err
 	}
 
 	// Send the extrinsic
 	hash, err := api.RPC.Author.SubmitExtrinsic(ext)
 	if err != nil {
-		return types.Hash{}, err
+		return err
 	}
 	fmt.Printf("Data submitted: %v against appID %v  sent with hash %#x\n", data, appID, hash)
 
-	return hash, nil
+	return nil
 
 }
