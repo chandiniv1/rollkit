@@ -3,7 +3,6 @@ package avail
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 
 	// "io/ioutil"
 	// "net/http"
@@ -16,7 +15,7 @@ import (
 	openrpcns "github.com/rollkit/celestia-openrpc/types/namespace"
 
 	"github.com/rollkit/rollkit/da"
-	"github.com/rollkit/rollkit/da/avail/mock"
+	"github.com/rollkit/rollkit/da/avail/datasubmit"
 	"github.com/rollkit/rollkit/log"
 	"github.com/rollkit/rollkit/types"
 )
@@ -68,8 +67,6 @@ func (c *DataAvailabilityLayerClient) Stop() error {
 // SubmitBlock submits a block to DA layer.
 func (c *DataAvailabilityLayerClient) SubmitBlock(ctx context.Context, block *types.Block) da.ResultSubmitBlock {
 
-	fmt.Println("submit block method called.......")
-
 	data, err := block.MarshalBinary()
 	if err != nil {
 		return da.ResultSubmitBlock{
@@ -80,7 +77,7 @@ func (c *DataAvailabilityLayerClient) SubmitBlock(ctx context.Context, block *ty
 		}
 	}
 
-	txResponseErr := mock.SubmitData(1000, c.config.ApiURL, c.config.Seed, 0, data)
+	txResponseErr := datasubmit.SubmitData(1000, c.config.ApiURL, c.config.Seed, c.config.AppID, data)
 
 	if txResponseErr != nil {
 		return da.ResultSubmitBlock{
@@ -94,89 +91,9 @@ func (c *DataAvailabilityLayerClient) SubmitBlock(ctx context.Context, block *ty
 	return da.ResultSubmitBlock{
 		BaseResult: da.BaseResult{
 			Code:     da.StatusSuccess,
-			Message:  "tx hash: ", //+ txResponse.TxHash,
-			DAHeight: 1,           //uint64(txResponse.Height),
+			Message:  "data submitted succesfully ",
+			DAHeight: 1,
 		},
 	}
 
-}
-
-// CheckBlockAvailability queries DA layer to check data availability of block at given height.
-func (a *DataAvailabilityLayerClient) CheckBlockAvailability(ctx context.Context, dataLayerHeight uint64) da.ResultCheckBlock {
-
-	// type Confidence struct {
-	// 	Block                uint32  `json:"block"`
-	// 	Confidence           float64 `json:"confidence"`
-	// 	SerialisedConfidence *string `json:"serialised_confidence,omitempty"`
-	// }
-
-	// fmt.Println("check block availability called.........")
-	// var blockNumber int
-	// confidenceURL := fmt.Sprintf("http://localhost:7000/v1/confidence/%d", blockNumber)
-
-	// response, err := http.Get(confidenceURL)
-
-	// if err != nil {
-	// 	return da.ResultCheckBlock{
-	// 		BaseResult: da.BaseResult{
-	// 			Code:    da.StatusError,
-	// 			Message: err.Error(),
-	// 		},
-	// 	}
-	// }
-
-	// responseData, err := ioutil.ReadAll(response.Body)
-	// if err != nil {
-	// 	return da.ResultCheckBlock{
-	// 		BaseResult: da.BaseResult{
-	// 			Code:    da.StatusError,
-	// 			Message: err.Error(),
-	// 		},
-	// 	}
-	// }
-
-	// var confidenceObject Confidence
-	// json.Unmarshal(responseData, &confidenceObject)
-
-	return da.ResultCheckBlock{
-		BaseResult: da.BaseResult{
-			Code:     da.StatusSuccess,
-			DAHeight: dataLayerHeight,
-		},
-		DataAvailable: false, //confidenceObject.Confidence > 92,
-	}
-
-}
-
-// RetrieveBlocks gets a batch of blocks from DA layer.
-func (c *DataAvailabilityLayerClient) RetrieveBlocks(ctx context.Context, dataLayerHeight uint64) da.ResultRetrieveBlocks {
-
-	blocks := make([]*types.Block, 1)
-
-	blocks[0] = new(types.Block)
-
-	// var blockNumber int
-	// confidenceURL := fmt.Sprintf("http://localhost:7000/v1/confidence/%d", blockNumber)
-
-	// response, err := http.Get(confidenceURL)
-
-	// responseData, err := ioutil.ReadAll(response.Body)
-	// if err != nil {
-	// 	return da.ResultRetrieveBlocks{
-	// 		BaseResult: da.BaseResult{
-	// 			Code:    da.StatusError,
-	// 			Message: err.Error(),
-	// 		},
-	// 	}
-	// }
-	//fmt.Println(string(responseData))
-
-	return da.ResultRetrieveBlocks{
-		BaseResult: da.BaseResult{
-			Code:     da.StatusSuccess,
-			DAHeight: dataLayerHeight,
-			Message:  "block data: ", //+ string(responseData),
-		},
-		Blocks: blocks,
-	}
 }
