@@ -3,17 +3,13 @@ package avail
 import (
 	"context"
 	"encoding/json"
-
-	// "io/ioutil"
-	// "net/http"
-	// "time"
-
-	// "github.com/rollkit/celestia-openrpc/types/share"
+	"fmt"
+	"io/ioutil"
+	"net/http"
 
 	ds "github.com/ipfs/go-datastore"
 	openrpc "github.com/rollkit/celestia-openrpc"
 	openrpcns "github.com/rollkit/celestia-openrpc/types/namespace"
-
 	"github.com/rollkit/rollkit/da"
 	"github.com/rollkit/rollkit/da/avail/datasubmit"
 	"github.com/rollkit/rollkit/log"
@@ -21,12 +17,11 @@ import (
 )
 
 type Config struct {
-	Seed   string `json:"seed"`
-	ApiURL string `json:"api_url"`
-	Size   int    `json:"size"`
-	AppID  int    `json:"app_id"`
-	Dest   string `json:"dest"`
-	Amount uint64 `json:amount`
+	Seed       string  `json:"seed"`
+	ApiURL     string  `json:"api_url"`
+	Size       int     `json:"size"`
+	AppID      int     `json:"app_id"`
+	confidence float64 `json:"confidence"`
 }
 
 // DataAvailabilityLayerClient use celestia-node public API.
@@ -96,4 +91,94 @@ func (c *DataAvailabilityLayerClient) SubmitBlock(ctx context.Context, block *ty
 		},
 	}
 
+}
+
+// CheckBlockAvailability queries DA layer to check data availability of block.
+func (c *DataAvailabilityLayerClient) CheckBlockAvailability(ctx context.Context, dataLayerHeight uint64) da.ResultCheckBlock {
+
+	type Confidence struct {
+		Block                uint32  `json:"block"`
+		Confidence           float64 `json:"confidence"`
+		SerialisedConfidence *string `json:"serialised_confidence,omitempty"`
+	}
+
+	blockNumber := dataLayerHeight
+	confidenceURL := fmt.Sprintf("http://localhost:7000/v1/confidence/%d", blockNumber)
+
+	response, err := http.Get(confidenceURL)
+
+	if err != nil {
+		return da.ResultCheckBlock{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: err.Error(),
+			},
+		}
+	}
+
+	responseData, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return da.ResultCheckBlock{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: err.Error(),
+			},
+		}
+	}
+
+	var confidenceObject Confidence
+	json.Unmarshal(responseData, &confidenceObject)
+
+	return da.ResultCheckBlock{
+		BaseResult: da.BaseResult{
+			Code:     da.StatusSuccess,
+			DAHeight: uint64(confidenceObject.Block),
+		},
+		DataAvailable: confidenceObject.Confidence > float64(c.config.confidence),
+	}
+}
+
+//RetrieveBlocks gets the block from DA layer.
+
+func (c *DataAvailabilityLayerClient) RetrieveBlocks(ctx context.Context, dataLayerHeight uint64) da.ResultRetrieveBlocks {
+
+	type AppData struct {
+		Block      uint32 `json:"block"`
+		Extrinsics string `json:"extrinsics"`
+	}
+
+	blocks := make([]*types.Block, 1)
+	blocks[0] = new(types.Block)
+
+	blockNumber := dataLayerHeight
+	appDataURL := fmt.Sprintf("http://localhost:7000/v1/appdata/%d?decode=true", blockNumber)
+	response, err := http.Get(appDataURL)
+	if err != nil {
+		return da.ResultRetrieveBlocks{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: err.Error(),
+			},
+		}
+	}
+	responseData, err := ioutil.ReadAll(response.Body)
+	if err != nil {
+		return da.ResultRetrieveBlocks{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: err.Error(),
+			},
+		}
+	}
+	var appDataObject AppData
+	json.Unmarshal(responseData, &appDataObject)
+
+	return da.ResultRetrieveBlocks{
+		BaseResult: da.BaseResult{
+			Code:     da.StatusSuccess,
+			DAHeight: uint64(appDataObject.Block),
+			Message:  "block data: " + appDataObject.Extrinsics,
+		},
+		Blocks: blocks,
+	}
 }
