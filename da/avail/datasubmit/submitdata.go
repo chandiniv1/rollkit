@@ -1,28 +1,22 @@
 package datasubmit
 
 import (
-	"fmt"
-
 	gsrpc "github.com/centrifuge/go-substrate-rpc-client/v4"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
 )
 
-func SubmitData(size int, apiURL string, seed string, AppID int, data []byte) error {
+// submit data submits the extrinsic through substrate api
+func SubmitData(size int, apiURL string, seed string, AppID int, data []byte) (types.Hash, error) {
 	api, err := gsrpc.NewSubstrateAPI(apiURL)
 	if err != nil {
-		return fmt.Errorf("cannot create api:%w", err)
+		return types.Hash{}, err
 	}
 
 	meta, err := api.RPC.State.GetMetadataLatest()
 	if err != nil {
-		return fmt.Errorf("cannot get metadata:%w", err)
+		return types.Hash{}, err
 	}
-
-	// Set data and appID according to need
-	// data, _ := RandToken(size)
-
-	//var appID types.AppID
 
 	var appID int
 
@@ -33,7 +27,7 @@ func SubmitData(size int, apiURL string, seed string, AppID int, data []byte) er
 
 	c, err := types.NewCall(meta, "DataAvailability.submit_data", data)
 	if err != nil {
-		return fmt.Errorf("cannot create new call:%w", err)
+		return types.Hash{}, err
 	}
 
 	//Create the extrinsic
@@ -41,28 +35,28 @@ func SubmitData(size int, apiURL string, seed string, AppID int, data []byte) er
 
 	genesisHash, err := api.RPC.Chain.GetBlockHash(0)
 	if err != nil {
-		return fmt.Errorf("cannot get block hash:%w", err)
+		return types.Hash{}, err
 	}
 
 	rv, err := api.RPC.State.GetRuntimeVersionLatest()
 	if err != nil {
-		return fmt.Errorf("cannot get runtime version:%w", err)
+		return types.Hash{}, err
 	}
 
 	keyringPair, err := signature.KeyringPairFromSecret(seed, 42)
 	if err != nil {
-		return fmt.Errorf("cannot create keyPair:%w", err)
+		return types.Hash{}, err
 	}
 
 	key, err := types.CreateStorageKey(meta, "System", "Account", keyringPair.PublicKey)
 	if err != nil {
-		return fmt.Errorf("cannot create storage key:%w", err)
+		return types.Hash{}, err
 	}
 
 	var accountInfo types.AccountInfo
 	ok, err := api.RPC.State.GetStorageLatest(key, &accountInfo)
 	if err != nil || !ok {
-		return fmt.Errorf("cannot get latest storage:%w", err)
+		return types.Hash{}, err
 	}
 
 	nonce := uint32(accountInfo.Nonce)
@@ -80,47 +74,15 @@ func SubmitData(size int, apiURL string, seed string, AppID int, data []byte) er
 	// Sign the transaction using Alice's default account
 	err = ext.Sign(keyringPair, o)
 	if err != nil {
-		return fmt.Errorf("cannot sign:%w", err)
+		return types.Hash{}, err
 	}
 
 	// Send the extrinsic
 	hash, err := api.RPC.Author.SubmitExtrinsic(ext)
 	if err != nil {
-		return fmt.Errorf("cannot submit extrinsic:%w", err)
+		return types.Hash{}, err
 	}
-	fmt.Printf("Data submitted: %v against appID %v  sent with hash %#x\n", data, appID, hash)
 
-	return nil
+	return hash, nil
 
 }
-
-// RandToken generates a random hex value.
-// func RandToken(n int) (string, error) {
-// 	bytes := make([]byte, n)
-// 	if _, err := rand.Read(bytes); err != nil {
-// 		return "", err
-// 	}
-// 	return hex.EncodeToString(bytes), nil
-// }
-
-// getData extracts data from the block and compares it
-// func GetData(hash types.Hash, api *gsrpc.SubstrateAPI, data string) error {
-// 	block, err := api.RPC.Chain.GetBlock(hash)
-// 	if err != nil {
-// 		return fmt.Errorf("cannot get block by hash:%w", err)
-// 	}
-// 	for _, ext := range block.Block.Extrinsics {
-// 		// these values below are specific indexes only for data submission, differs with each extrinsic
-// 		if ext.Method.CallIndex.SectionIndex == 29 && ext.Method.CallIndex.MethodIndex == 1 {
-// 			arg := ext.Method.Args
-// 			str := string(arg)
-// 			slice := str[2:]
-// 			fmt.Println("string value", slice)
-// 			fmt.Println("data", data)
-// 			if slice == data {
-// 				fmt.Println("Data found in block")
-// 			}
-// 		}
-// 	}
-// 	return nil
-// }
