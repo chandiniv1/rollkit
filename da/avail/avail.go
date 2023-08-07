@@ -18,10 +18,12 @@ import (
 )
 
 type Config struct {
-	Seed   string `json:"seed"`
-	ApiURL string `json:"api_url"`
-	Size   int    `json:"size"`
-	AppID  int    `json:"app_id"`
+	BaseURL    string  `json:"base_url"`
+	Seed       string  `json:"seed"`
+	ApiURL     string  `json:"api_url"`
+	Size       int     `json:"size"`
+	AppID      int     `json:"app_id"`
+	confidence float64 `json:"confidence"`
 }
 
 type DataAvailabilityLayerClient struct {
@@ -29,6 +31,17 @@ type DataAvailabilityLayerClient struct {
 	namespace openrpcns.Namespace
 	config    Config
 	logger    log.Logger
+}
+
+type Confidence struct {
+	Block                uint32  `json:"block"`
+	Confidence           float64 `json:"confidence"`
+	SerialisedConfidence *string `json:"serialised_confidence,omitempty"`
+}
+
+type AppData struct {
+	Block      uint32 `json:"block"`
+	Extrinsics string `json:"extrinsics"`
 }
 
 var _ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
@@ -71,7 +84,7 @@ func (c *DataAvailabilityLayerClient) SubmitBlock(ctx context.Context, block *ty
 		}
 	}
 
-	txHash, err := datasubmit.SubmitData(1000, c.config.ApiURL, c.config.Seed, c.config.AppID, data)
+	txHash, err := datasubmit.SubmitData(c.config.Size, c.config.ApiURL, c.config.Seed, c.config.AppID, data)
 
 	if err != nil {
 		return da.ResultSubmitBlock{
@@ -92,16 +105,11 @@ func (c *DataAvailabilityLayerClient) SubmitBlock(ctx context.Context, block *ty
 }
 
 // CheckBlockAvailability queries DA layer to check data availability of block.
-func (a *DataAvailabilityLayerClient) CheckBlockAvailability(ctx context.Context, dataLayerHeight uint64) da.ResultCheckBlock {
-
-	type Confidence struct {
-		Block                uint32  `json:"block"`
-		Confidence           float64 `json:"confidence"`
-		SerialisedConfidence *string `json:"serialised_confidence,omitempty"`
-	}
+func (c *DataAvailabilityLayerClient) CheckBlockAvailability(ctx context.Context, dataLayerHeight uint64) da.ResultCheckBlock {
 
 	blockNumber := dataLayerHeight
-	confidenceURL := fmt.Sprintf("http://localhost:7000/v1/confidence/%d", blockNumber)
+
+	confidenceURL := fmt.Sprintf(c.config.BaseURL+"/confidence/%d", blockNumber)
 
 	response, err := http.Get(confidenceURL)
 
@@ -132,7 +140,7 @@ func (a *DataAvailabilityLayerClient) CheckBlockAvailability(ctx context.Context
 			Code:     da.StatusSuccess,
 			DAHeight: uint64(confidenceObject.Block),
 		},
-		DataAvailable: confidenceObject.Confidence > 92,
+		DataAvailable: confidenceObject.Confidence > c.config.confidence,
 	}
 }
 
@@ -140,16 +148,13 @@ func (a *DataAvailabilityLayerClient) CheckBlockAvailability(ctx context.Context
 
 func (c *DataAvailabilityLayerClient) RetrieveBlocks(ctx context.Context, dataLayerHeight uint64) da.ResultRetrieveBlocks {
 
-	type AppData struct {
-		Block      uint32 `json:"block"`
-		Extrinsics string `json:"extrinsics"`
-	}
-
 	blocks := make([]*types.Block, 1)
 	blocks[0] = new(types.Block)
 
 	blockNumber := dataLayerHeight
-	appDataURL := fmt.Sprintf("http://localhost:7000/v1/appdata/%d?decode=true", blockNumber)
+
+	appDataURL := fmt.Sprintf(c.config.BaseURL+"/appdata/%d?decode=true", blockNumber)
+
 	response, err := http.Get(appDataURL)
 	if err != nil {
 		return da.ResultRetrieveBlocks{
