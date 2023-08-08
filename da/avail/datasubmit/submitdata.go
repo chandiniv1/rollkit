@@ -1,14 +1,12 @@
-package mock
+package datasubmit
 
 import (
-	"fmt"
-
 	gsrpc "github.com/centrifuge/go-substrate-rpc-client/v4"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/signature"
 	"github.com/centrifuge/go-substrate-rpc-client/v4/types"
 )
 
-func SubmitData(size int, apiURL string, seed string, AppID int, data []byte) error {
+func SubmitData(apiURL string, seed string, appID int, data []byte) error {
 	api, err := gsrpc.NewSubstrateAPI(apiURL)
 	if err != nil {
 		return err
@@ -18,12 +16,9 @@ func SubmitData(size int, apiURL string, seed string, AppID int, data []byte) er
 	if err != nil {
 		return err
 	}
-
-	var appID int
-
 	// if app id is greater than 0 then it must be created before submitting data
-	if AppID != 0 {
-		appID = AppID
+	if appID == 0 {
+		return err
 	}
 
 	c, err := types.NewCall(meta, "DataAvailability.submit_data", data)
@@ -79,11 +74,10 @@ func SubmitData(size int, apiURL string, seed string, AppID int, data []byte) er
 	}
 
 	// Send the extrinsic
-	hash, err := api.RPC.Author.SubmitExtrinsic(ext)
+	_, err = api.RPC.Author.SubmitExtrinsic(ext)
 	if err != nil {
 		return err
 	}
-	fmt.Printf("Data submitted: %v against appID %v  sent with hash %#x\n", data, appID, hash)
 
 	return nil
 

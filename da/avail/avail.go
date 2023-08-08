@@ -8,27 +8,36 @@ import (
 	"net/http"
 
 	ds "github.com/ipfs/go-datastore"
-	openrpc "github.com/rollkit/celestia-openrpc"
-	openrpcns "github.com/rollkit/celestia-openrpc/types/namespace"
+
 	"github.com/rollkit/rollkit/da"
-	"github.com/rollkit/rollkit/da/avail/mock"
+	"github.com/rollkit/rollkit/da/avail/datasubmit"
 	"github.com/rollkit/rollkit/log"
 	"github.com/rollkit/rollkit/types"
 )
 
 type Config struct {
-	Seed   string `json:"seed"`
-	ApiURL string `json:"api_url"`
-	Size   int    `json:"size"`
-	AppID  int    `json:"app_id"`
+	BaseURL    string  `json:"base_url"`
+	Seed       string  `json:"seed"`
+	ApiURL     string  `json:"api_url"`
+	AppID      int     `json:"app_id"`
+	confidence float64 `json:"confidence"`
 }
 
 // DataAvailabilityLayerClient use celestia-node public API.
 type DataAvailabilityLayerClient struct {
-	rpc       *openrpc.Client
-	namespace openrpcns.Namespace
+	namespace types.NamespaceID
 	config    Config
 	logger    log.Logger
+}
+
+type Confidence struct {
+	Block                uint32  `json:"block"`
+	Confidence           float64 `json:"confidence"`
+	SerialisedConfidence *string `json:"serialised_confidence,omitempty"`
+}
+type AppData struct {
+	Block      uint32 `json:"block"`
+	Extrinsics string `json:"extrinsics"`
 }
 
 var _ da.DataAvailabilityLayerClient = &DataAvailabilityLayerClient{}
@@ -47,6 +56,7 @@ func (c *DataAvailabilityLayerClient) Init(namespaceID types.NamespaceID, config
 
 // Start prepares DataAvailabilityLayerClient to work.
 func (c *DataAvailabilityLayerClient) Start() error {
+
 	c.logger.Info("starting avail Data Availability Layer Client", "baseURL", c.config.ApiURL)
 
 	return nil
@@ -54,7 +64,9 @@ func (c *DataAvailabilityLayerClient) Start() error {
 
 // Stop stops DataAvailabilityLayerClient.
 func (c *DataAvailabilityLayerClient) Stop() error {
+
 	c.logger.Info("stopping Avail Data Availability Layer Client")
+
 	return nil
 }
 
@@ -71,7 +83,7 @@ func (c *DataAvailabilityLayerClient) SubmitBlocks(ctx context.Context, blocks [
 				},
 			}
 		}
-		err = mock.SubmitData(1000, c.config.ApiURL, c.config.Seed, 0, data)
+		err = datasubmit.SubmitData(c.config.ApiURL, c.config.Seed, c.config.AppID, data)
 
 		if err != nil {
 			return da.ResultSubmitBlocks{
@@ -87,23 +99,17 @@ func (c *DataAvailabilityLayerClient) SubmitBlocks(ctx context.Context, blocks [
 		BaseResult: da.BaseResult{
 			Code:     da.StatusSuccess,
 			Message:  "data submitted succesfully",
-			DAHeight: 1, //uint64(txResponse.Height),
+			DAHeight: 1,
 		},
 	}
 }
 
-// CheckBlockAvailability queries DA layer to check data availability of block at given height.
-func (a *DataAvailabilityLayerClient) CheckBlockAvailability(ctx context.Context, dataLayerHeight uint64) da.ResultCheckBlock {
+// CheckBlockAvailability queries DA layer to check data availability of block.
+func (c *DataAvailabilityLayerClient) CheckBlockAvailability(ctx context.Context, dataLayerHeight uint64) da.ResultCheckBlock {
 
-	type Confidence struct {
-		Block                uint32  `json:"block"`
-		Confidence           float64 `json:"confidence"`
-		SerialisedConfidence *string `json:"serialised_confidence,omitempty"`
-	}
-
-	fmt.Println("check block availability called.........")
 	blockNumber := dataLayerHeight
-	confidenceURL := fmt.Sprintf("http://localhost:7000/v1/confidence/%d", blockNumber)
+
+	confidenceURL := fmt.Sprintf(c.config.BaseURL+"/confidence/%d", blockNumber)
 
 	response, err := http.Get(confidenceURL)
 
@@ -134,60 +140,21 @@ func (a *DataAvailabilityLayerClient) CheckBlockAvailability(ctx context.Context
 			Code:     da.StatusSuccess,
 			DAHeight: uint64(confidenceObject.Block),
 		},
-		DataAvailable: confidenceObject.Confidence > 92,
+		DataAvailable: confidenceObject.Confidence > c.config.confidence,
 	}
 }
 
-// RetrieveBlocks gets a batch of blocks from DA layer.
-
-// func (c *DataAvailabilityLayerClient) RetrieveBlocks(ctx context.Context, dataLayerHeight uint64) da.ResultRetrieveBlocks {
-// 	type AppData struct {
-// 		Block      uint32 `json:"block"`
-// 		Extrinsics string `json:"extrinsics"`
-// 	}
-// 	blocks := make([]*types.Block, 1)
-// 	blocks[0] = new(types.Block)
-// 	blockNumber := dataLayerHeight
-// 	appDataURL := fmt.Sprintf("http://localhost:7000/v1/appdata/%d?decode=true", blockNumber)
-// 	response, err := http.Get(appDataURL)
-// 	if err != nil {
-// 		return da.ResultRetrieveBlocks{
-// 			BaseResult: da.BaseResult{
-// 				Code:    da.StatusError,
-// 				Message: err.Error(),
-// 			},
-// 		}
-// 	}
-// 	responseData, err := ioutil.ReadAll(response.Body)
-// 	if err != nil {
-// 		return da.ResultRetrieveBlocks{
-// 			BaseResult: da.BaseResult{
-// 				Code:    da.StatusError,
-// 				Message: err.Error(),
-// 			},
-// 		}
-// 	}
-// 	var appDataObject AppData
-// 	json.Unmarshal(responseData, &appDataObject)
-
-// 	return da.ResultRetrieveBlocks{
-// 		BaseResult: da.BaseResult{
-// 			Code:     da.StatusSuccess,
-// 			DAHeight: uint64(appDataObject.Block),
-// 			Message:  "block data: " + appDataObject.Extrinsics,
-// 		},
-// 		Blocks: blocks,
-// 	}
-// }
+//RetrieveBlocks gets the block from DA layer.
 
 func (c *DataAvailabilityLayerClient) RetrieveBlocks(ctx context.Context, dataLayerHeight uint64) da.ResultRetrieveBlocks {
-	fmt.Println("retrieve blocks method called.................")
 
 	blocks := make([]*types.Block, 1)
 	blocks[0] = new(types.Block)
 
-	blockNumber := 12
-	appDataURL := fmt.Sprintf("http://localhost:7000/v1/appdata/%d?decode=true", blockNumber)
+	blockNumber := dataLayerHeight
+
+	appDataURL := fmt.Sprintf(c.config.BaseURL+"/appdata/%d?decode=true", blockNumber)
+
 	response, err := http.Get(appDataURL)
 	if err != nil {
 		return da.ResultRetrieveBlocks{
@@ -197,7 +164,6 @@ func (c *DataAvailabilityLayerClient) RetrieveBlocks(ctx context.Context, dataLa
 			},
 		}
 	}
-
 	responseData, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		return da.ResultRetrieveBlocks{
@@ -208,15 +174,15 @@ func (c *DataAvailabilityLayerClient) RetrieveBlocks(ctx context.Context, dataLa
 		}
 	}
 
-	fmt.Println("retrieved block data is", string(responseData))
+	var appDataObject AppData
+	json.Unmarshal(responseData, &appDataObject)
 
 	return da.ResultRetrieveBlocks{
 		BaseResult: da.BaseResult{
 			Code:     da.StatusSuccess,
-			DAHeight: 1,              //uint64(appDataObject.Block),
-			Message:  "block data: ", //+ appDataObject.Extrinsics,
+			DAHeight: uint64(appDataObject.Block),
+			Message:  "block data: " + appDataObject.Extrinsics,
 		},
 		Blocks: blocks,
 	}
-
 }

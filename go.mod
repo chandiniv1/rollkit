@@ -204,6 +204,6 @@ replace (
 	// github.com/vedhavyas/go-subkey => github.com/vedhavyas/go-subkey/v2 v2.0.0
 	// github.com/vedhavyas/go-subkey/v2 => github.com/vedhavyas/go-subkey/v2 v2.0.0
 	github.com/gogo/protobuf => github.com/regen-network/protobuf v1.3.2-alpha.regen.4
+	github.com/tendermint/tendermint => github.com/rollkit/cometbft v0.0.0-20230524013001-2968c8b8b121
 	google.golang.org/grpc => google.golang.org/grpc v1.33.2
-
 )
