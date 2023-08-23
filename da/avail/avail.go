@@ -154,7 +154,6 @@ func (c *DataAvailabilityLayerClient) CheckBlockAvailability(ctx context.Context
 //RetrieveBlocks gets the block from DA layer.
 
 func (c *DataAvailabilityLayerClient) RetrieveBlocks(ctx context.Context, dataLayerHeight uint64) da.ResultRetrieveBlocks {
-
 	blocks := []*types.Block{}
 
 	blockNumber := dataLayerHeight
@@ -169,16 +168,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBlocks(ctx context.Context, dataLa
 		}
 	}
 	responseData, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		return da.ResultRetrieveBlocks{
-			BaseResult: da.BaseResult{
-				Code:    da.StatusError,
-				Message: err.Error(),
-			},
-		}
-	}
-	var appDataObject AppData
-	err = json.Unmarshal(responseData, &appDataObject)
+
 	if err != nil {
 		return da.ResultRetrieveBlocks{
 			BaseResult: da.BaseResult{
@@ -188,6 +178,20 @@ func (c *DataAvailabilityLayerClient) RetrieveBlocks(ctx context.Context, dataLa
 		}
 	}
 
+	var appDataObject AppData
+
+	if !(string(responseData) != "Not found") {
+		err = json.Unmarshal(responseData, &appDataObject)
+		if err != nil {
+			return da.ResultRetrieveBlocks{
+				BaseResult: da.BaseResult{
+					Code:    da.StatusError,
+					Message: err.Error(),
+				},
+			}
+		}
+
+	}
 	txnsByteArray := []byte{}
 	for _, extrinsic := range appDataObject.Extrinsics {
 		txnsByteArray = append(txnsByteArray, []byte(extrinsic)...)
