@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"strings"
 
 	ds "github.com/ipfs/go-datastore"
 	"github.com/rollkit/rollkit/da"
@@ -156,6 +155,7 @@ func (c *DataAvailabilityLayerClient) CheckBlockAvailability(ctx context.Context
 func (c *DataAvailabilityLayerClient) RetrieveBlocks(ctx context.Context, dataLayerHeight uint64) da.ResultRetrieveBlocks {
 	blocks := []*types.Block{}
 
+Loop:
 	blockNumber := dataLayerHeight
 	appDataURL := fmt.Sprintf(c.config.BaseURL+"/appdata/%d?decode=true", blockNumber)
 	response, err := http.Get(appDataURL)
@@ -180,9 +180,14 @@ func (c *DataAvailabilityLayerClient) RetrieveBlocks(ctx context.Context, dataLa
 
 	var appDataObject AppData
 
-	if !(string(responseData) != "Not found") {
-		err = json.Unmarshal(responseData, &appDataObject)
+	if string(responseData) == "\"Not found\"" {
+		appDataObject = AppData{Block: uint32(blockNumber), Extrinsics: []string{}}
+	} else if string(responseData) == "\"Processing block\"" {
+		goto Loop
+	} else {
+		err := json.Unmarshal(responseData, &appDataObject)
 		if err != nil {
+			fmt.Println(string(responseData))
 			return da.ResultRetrieveBlocks{
 				BaseResult: da.BaseResult{
 					Code:    da.StatusError,
@@ -190,8 +195,8 @@ func (c *DataAvailabilityLayerClient) RetrieveBlocks(ctx context.Context, dataLa
 				},
 			}
 		}
-
 	}
+
 	txnsByteArray := []byte{}
 	for _, extrinsic := range appDataObject.Extrinsics {
 		txnsByteArray = append(txnsByteArray, []byte(extrinsic)...)
@@ -218,7 +223,6 @@ func (c *DataAvailabilityLayerClient) RetrieveBlocks(ctx context.Context, dataLa
 		BaseResult: da.BaseResult{
 			Code:     da.StatusSuccess,
 			DAHeight: uint64(appDataObject.Block),
-			Message:  "block data: " + strings.Join(appDataObject.Extrinsics, " "),
 		},
 		Blocks: blocks,
 	}
