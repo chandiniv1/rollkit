@@ -208,13 +208,9 @@ Loop:
 				BaseHeader: types.BaseHeader{
 					Height: blockNumber,
 				},
-				AggregatorsHash: make([]byte, 32),
 			}},
 		Data: types.Data{
 			Txs: types.Txs{txnsByteArray},
-			IntermediateStateRoots: types.IntermediateStateRoots{
-				RawRootsList: nil,
-			},
 		},
 	}
 	blocks = append(blocks, block)
