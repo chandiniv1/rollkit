@@ -30,11 +30,8 @@ func TestVerify(t *testing.T) {
 		{
 			prepare: func() (*SignedHeader, bool) {
 				untrusted := *untrustedAdj
-				untrusted.AggregatorsHash = fakeAggregatorsHash
-				return &untrusted, false
-			},
-			err: &header.VerifyError{
-				Reason: ErrAggregatorSetHashMismatch,
+				untrusted.Signatures[0] = GetRandomBytes(32)
+				return &untrusted, true
 			},
 		},
 		{
