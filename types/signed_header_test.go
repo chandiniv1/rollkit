@@ -26,7 +26,7 @@ func TestVerify(t *testing.T) {
 		{
 			prepare: func() (*SignedHeader, bool) {
 				untrusted := *untrustedAdj
-				untrusted.AggregatorsHash = GetRandomBytes(32)
+				untrusted.Signatures[0] = GetRandomBytes(32)
 				return &untrusted, true
 			},
 			err: true,
