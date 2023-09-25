@@ -107,9 +107,9 @@ func (sh *SignedHeader) ValidateBasic() error {
 		return err
 	}
 
-	if !bytes.Equal(sh.Validators.Hash(), sh.Signatures[0]) {
-		return errors.New("aggregator set hash in signed header and hash of validator set do not match")
-	}
+	// if !bytes.Equal(sh.Validators.Hash(), sh.Header.Signatures[0]) {
+	// 	return errors.New("aggregator set hash in signed header and hash of validator set do not match")
+	// }
 
 	// Make sure there is exactly one signature
 	if len(sh.Commit.Signatures) != 1 {

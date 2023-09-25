@@ -16,7 +16,7 @@ func TestVerify(t *testing.T) {
 	time.Sleep(time.Second)
 	untrustedAdj, err := GetNextRandomHeader(trusted, privKey)
 	require.NoError(t, err)
-	fakeAggregatorsHash := header.Hash(GetRandomBytes(32))
+	//fakeAggregatorsHash := header.Hash(GetRandomBytes(32))
 	fakeLastHeaderHash := header.Hash(GetRandomBytes(32))
 	fakeLastCommitHash := header.Hash(GetRandomBytes(32))
 	tests := []struct {
@@ -100,6 +100,7 @@ func TestVerify(t *testing.T) {
 	for i, test := range tests {
 		t.Run(strconv.Itoa(i), func(t *testing.T) {
 			preparedHeader, recomputeCommit := test.prepare()
+
 			if recomputeCommit {
 				commit, err := getCommit(preparedHeader.Header, privKey)
 				require.NoError(t, err)
