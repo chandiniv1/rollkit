@@ -20,7 +20,7 @@ type Config struct {
 	Seed       string  `json:"seed"`
 	ApiURL     string  `json:"api_url"`
 	AppID      int     `json:"app_id"`
-	confidence float64 `json:"confidence"`
+	Confidence float64 `json:"confidence"`
 }
 
 type DataAvailabilityLayerClient struct {
@@ -146,7 +146,7 @@ func (c *DataAvailabilityLayerClient) CheckBlockAvailability(ctx context.Context
 			Code:     da.StatusSuccess,
 			DAHeight: uint64(confidenceObject.Block),
 		},
-		DataAvailable: confidenceObject.Confidence > float64(c.config.confidence),
+		DataAvailable: confidenceObject.Confidence > float64(c.config.Confidence),
 	}
 }
 
