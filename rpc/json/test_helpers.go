@@ -31,6 +31,15 @@ const (
 	Commit     = "Commit"
 )
 
+const (
+	InitChain  = "InitChain"
+	CheckTx    = "CheckTx"
+	BeginBlock = "BeginBlock"
+	DeliverTx  = "DeliverTx"
+	EndBlock   = "EndBlock"
+	Commit     = "Commit"
+)
+
 // copied from rpc
 func getRPC(t *testing.T) (*mocks.Application, rpcclient.Client) {
 	t.Helper()
