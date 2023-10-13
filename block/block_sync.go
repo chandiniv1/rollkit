@@ -72,21 +72,12 @@ func NewBlockSyncService(ctx context.Context, store ds.TxnDatastore, conf config
 	}, nil
 }
 
-<<<<<<<< HEAD:block/block_sync.go
 // BlockStore returns the blockstore of the BlockSyncService
 func (bSyncService *BlockSyncService) BlockStore() *goheaderstore.Store[*types.Block] {
 	return bSyncService.blockStore
 }
 
-func (bSyncService *BlockSyncService) initBlockStoreAndStartSyncer(ctx context.Context, initial *types.Block) error {
-========
-// BlockStore returns the blockstore of the BlockExchangeService
-func (bExService *BlockExchangeService) BlockStore() *goheaderstore.Store[*types.Block] {
-	return bExService.blockStore
-}
-
 func (bExService *BlockExchangeService) initBlockStoreAndStartSyncer(ctx context.Context, initial *types.Block) error {
->>>>>>>> 2e3215b (Move block/header exchange to block package (#1224)):block/block_exchange.go
 	if initial == nil {
 		return fmt.Errorf("failed to initialize the blockstore and start syncer")
 	}
@@ -101,11 +92,7 @@ func (bExService *BlockExchangeService) initBlockStoreAndStartSyncer(ctx context
 
 // Initialize block store if needed and broadcasts provided block.
 // Note: Only returns an error in case block store can't be initialized. Logs error if there's one while broadcasting.
-<<<<<<<< HEAD:block/block_sync.go
-func (bSyncService *BlockSyncService) WriteToBlockStoreAndBroadcast(ctx context.Context, block *types.Block) error {
-========
 func (bExService *BlockExchangeService) WriteToBlockStoreAndBroadcast(ctx context.Context, block *types.Block) error {
->>>>>>>> 2e3215b (Move block/header exchange to block package (#1224)):block/block_exchange.go
 	// For genesis block initialize the store and start the syncer
 	if int64(block.Height()) == bSyncService.genesis.InitialHeight {
 		if err := bSyncService.blockStore.Init(ctx, block); err != nil {

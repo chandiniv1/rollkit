@@ -72,21 +72,12 @@ func NewHeaderSynceService(ctx context.Context, store ds.TxnDatastore, conf conf
 	}, nil
 }
 
-<<<<<<<< HEAD:block/header_sync.go
 // HeaderStore returns the headerstore of the HeaderSynceService
 func (hSyncService *HeaderSynceService) HeaderStore() *goheaderstore.Store[*types.SignedHeader] {
 	return hSyncService.headerStore
 }
 
-func (hSyncService *HeaderSynceService) initHeaderStoreAndStartSyncer(ctx context.Context, initial *types.SignedHeader) error {
-========
-// HeaderStore returns the headerstore of the HeaderExchangeService
-func (hExService *HeaderExchangeService) HeaderStore() *goheaderstore.Store[*types.SignedHeader] {
-	return hExService.headerStore
-}
-
-func (hExService *HeaderExchangeService) initHeaderStoreAndStartSyncer(ctx context.Context, initial *types.SignedHeader) error {
->>>>>>>> 2e3215b (Move block/header exchange to block package (#1224)):block/header_exchange.go
+func (hSyncService *HeaderExchangeService) initHeaderStoreAndStartSyncer(ctx context.Context, initial *types.SignedHeader) error {
 	if initial == nil {
 		return fmt.Errorf("failed to initialize the headerstore and start syncer")
 	}
@@ -101,11 +92,7 @@ func (hExService *HeaderExchangeService) initHeaderStoreAndStartSyncer(ctx conte
 
 // Initialize header store if needed and broadcasts provided header.
 // Note: Only returns an error in case header store can't be initialized. Logs error if there's one while broadcasting.
-<<<<<<<< HEAD:block/header_sync.go
 func (hSyncService *HeaderSynceService) WriteToHeaderStoreAndBroadcast(ctx context.Context, signedHeader *types.SignedHeader) error {
-========
-func (hExService *HeaderExchangeService) WriteToHeaderStoreAndBroadcast(ctx context.Context, signedHeader *types.SignedHeader) error {
->>>>>>>> 2e3215b (Move block/header exchange to block package (#1224)):block/header_exchange.go
 	// For genesis header initialize the store and start the syncer
 	if int64(signedHeader.Height()) == hSyncService.genesis.InitialHeight {
 		if err := hSyncService.headerStore.Init(ctx, signedHeader); err != nil {
