@@ -1,8 +1,9 @@
 package avail
 
 import (
+	"bytes"
 	"context"
-	"encoding/hex"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -10,16 +11,15 @@ import (
 
 	ds "github.com/ipfs/go-datastore"
 	"github.com/rollkit/rollkit/da"
-	"github.com/rollkit/rollkit/da/avail/datasubmit"
 	"github.com/rollkit/rollkit/log"
 	"github.com/rollkit/rollkit/types"
 )
 
 type Config struct {
-	BaseURL    string  `json:"base_url"`
-	Seed       string  `json:"seed"`
-	ApiURL     string  `json:"api_url"`
-	AppID      int     `json:"app_id"`
+	BaseURL string `json:"base_url"`
+	//Seed       string  `json:"seed"`
+	// ApiURL     string  `json:"api_url"`
+	// AppID      int     `json:"app_id"`
 	Confidence float64 `json:"confidence"`
 }
 
@@ -33,6 +33,16 @@ type Confidence struct {
 	Block                uint32  `json:"block"`
 	Confidence           float64 `json:"confidence"`
 	SerialisedConfidence *string `json:"serialised_confidence,omitempty"`
+}
+
+type SubmitRequest struct {
+	Data string `json:"data"`
+}
+
+type SubmitResponse struct {
+	BlockHash        string `json:"block_hash"`
+	TransactionHash  string `json:"hash"`
+	TransactionIndex uint32 `json:"index"`
 }
 
 type AppData struct {
@@ -57,7 +67,7 @@ func (c *DataAvailabilityLayerClient) Init(namespaceID types.NamespaceID, config
 // Start prepares DataAvailabilityLayerClient to work.
 func (c *DataAvailabilityLayerClient) Start() error {
 
-	c.logger.Info("starting avail Data Availability Layer Client", "baseURL", c.config.ApiURL)
+	c.logger.Info("starting avail Data Availability Layer Client", "baseURL", c.config.BaseURL)
 
 	return nil
 }
@@ -72,7 +82,6 @@ func (c *DataAvailabilityLayerClient) Stop() error {
 
 // SubmitBlock submits a block to DA layer.
 func (c *DataAvailabilityLayerClient) SubmitBlock(ctx context.Context, block *types.Block) da.ResultSubmitBlock {
-
 	data, err := block.MarshalBinary()
 	if err != nil {
 		return da.ResultSubmitBlock{
@@ -82,9 +91,34 @@ func (c *DataAvailabilityLayerClient) SubmitBlock(ctx context.Context, block *ty
 			},
 		}
 	}
+	encodedBlock := base64.StdEncoding.EncodeToString(data)
 
-	txHash, err := datasubmit.SubmitData(c.config.ApiURL, c.config.Seed, c.config.AppID, data)
+	requestData := SubmitRequest{
+		Data: encodedBlock,
+	}
 
+	requestBody, err := json.Marshal(requestData)
+	if err != nil {
+		return da.ResultSubmitBlock{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: err.Error(),
+			},
+		}
+	}
+	// Make a POST request to the /v2/submit endpoint.
+	response, err := http.Post(c.config.BaseURL+"/v2/submit", "application/json", bytes.NewBuffer(requestBody))
+	if err != nil {
+		return da.ResultSubmitBlock{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: err.Error(),
+			},
+		}
+	}
+	defer response.Body.Close()
+
+	responseData, err := ioutil.ReadAll(response.Body)
 	if err != nil {
 		return da.ResultSubmitBlock{
 			BaseResult: da.BaseResult{
@@ -94,20 +128,60 @@ func (c *DataAvailabilityLayerClient) SubmitBlock(ctx context.Context, block *ty
 		}
 	}
 
+	var submitResponse SubmitResponse
+	err = json.Unmarshal(responseData, &submitResponse)
+	if err != nil {
+		return da.ResultSubmitBlock{
+			BaseResult: da.BaseResult{
+				Code:    da.StatusError,
+				Message: err.Error(),
+			},
+		}
+	}
 	return da.ResultSubmitBlock{
 		BaseResult: da.BaseResult{
 			Code:     da.StatusSuccess,
-			Message:  "tx hash: " + hex.EncodeToString(txHash[:]),
-			DAHeight: 1,
+			Message:  "tx hash: " + submitResponse.TransactionHash,
+			DAHeight: uint64(submitResponse.TransactionIndex),
 		},
 	}
+
 }
+
+// data, err := block.MarshalBinary()
+// if err != nil {
+// 	return da.ResultSubmitBlock{
+// 		BaseResult: da.BaseResult{
+// 			Code:    da.StatusError,
+// 			Message: err.Error(),
+// 		},
+// 	}
+// }
+
+// txHash, err := datasubmit.SubmitData(c.config.ApiURL, c.config.Seed, c.config.AppID, data)
+
+// if err != nil {
+// 	return da.ResultSubmitBlock{
+// 		BaseResult: da.BaseResult{
+// 			Code:    da.StatusError,
+// 			Message: err.Error(),
+// 		},
+// 	}
+// }
+
+// return da.ResultSubmitBlock{
+// 	BaseResult: da.BaseResult{
+// 		Code:     da.StatusSuccess,
+// 		Message:  "tx hash: " + hex.EncodeToString(txHash[:]),
+// 		DAHeight: 1,
+// 	},
+// }
 
 // CheckBlockAvailability queries DA layer to check data availability of block.
 func (c *DataAvailabilityLayerClient) CheckBlockAvailability(ctx context.Context, dataLayerHeight uint64) da.ResultCheckBlock {
 
 	blockNumber := dataLayerHeight
-	confidenceURL := fmt.Sprintf(c.config.BaseURL+"/confidence/%d", blockNumber)
+	confidenceURL := fmt.Sprintf(c.config.BaseURL+"/v1/confidence/%d", blockNumber)
 
 	response, err := http.Get(confidenceURL)
 
@@ -157,7 +231,7 @@ func (c *DataAvailabilityLayerClient) RetrieveBlocks(ctx context.Context, dataLa
 
 Loop:
 	blockNumber := dataLayerHeight
-	appDataURL := fmt.Sprintf(c.config.BaseURL+"/appdata/%d?decode=true", blockNumber)
+	appDataURL := fmt.Sprintf(c.config.BaseURL+"/v1/appdata/%d?decode=true", blockNumber)
 	response, err := http.Get(appDataURL)
 	if err != nil {
 		return da.ResultRetrieveBlocks{

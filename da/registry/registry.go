@@ -22,6 +22,7 @@ func (e *ErrAlreadyRegistered) Error() string {
 // this is a central registry for all Data Availability Layer Clients
 var clients = map[string]func() da.DataAvailabilityLayerClient{
 	//"mock":     func() da.DataAvailabilityLayerClient { return &mock.DataAvailabilityLayerClient{} },
+	//"rpc":      func() da.DataAvailabilityLayerClient { return &rpc.DataAvailabilityLayerClient{} },
 	"grpc":     func() da.DataAvailabilityLayerClient { return &grpc.DataAvailabilityLayerClient{} },
 	"celestia": func() da.DataAvailabilityLayerClient { return &celestia.DataAvailabilityLayerClient{} },
 	"avail":    func() da.DataAvailabilityLayerClient { return &avail.DataAvailabilityLayerClient{} },
