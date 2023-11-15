@@ -87,6 +87,15 @@ func getNodeHeightFromStore(node Node) (uint64, error) {
 	return 0, errors.New("not a full node")
 }
 
+// safeClose closes the channel if it's not closed already
+func safeClose(ch chan struct{}) {
+	select {
+	case <-ch:
+	default:
+		close(ch)
+	}
+}
+
 func verifyNodesSynced(node1, node2 Node, source Source) error {
 	return testutils.Retry(300, 100*time.Millisecond, func() error {
 		n1Height, err := getNodeHeight(node1, source)
@@ -117,16 +126,18 @@ func waitForAtLeastNBlocks(node Node, n int, source Source) error {
 	})
 }
 
-// TODO: use n and return n validators
-func getGenesisValidatorSetWithSigner(n int) ([]cmtypes.GenesisValidator, crypto.PrivKey) {
+func getGenesisValidatorSetWithSigner() ([]cmtypes.GenesisValidator, crypto.PrivKey) {
 	nodeKey := &p2p.NodeKey{
 		PrivKey: genesisValidatorKey,
 	}
 	signingKey, _ := GetNodeKey(nodeKey)
 	pubKey := genesisValidatorKey.PubKey()
 
-	genesisValidators := []cmtypes.GenesisValidator{
-		{Address: pubKey.Address(), PubKey: pubKey, Power: int64(100), Name: "gen #1"},
-	}
+	genesisValidators := []cmtypes.GenesisValidator{{
+		Address: pubKey.Address(),
+		PubKey:  pubKey,
+		Power:   int64(100),
+		Name:    "gen #1",
+	}}
 	return genesisValidators, signingKey
 }
